@@ -48,7 +48,7 @@ class Structurizer:
             title = doc['title']
             content = doc['document']
 
-            raw_prompt = open("prompts/construction_graph.txt", "r").read()
+            raw_prompt = open("prompts/construct_graph.txt", "r").read()
             prompt = raw_prompt.format(
                 requirement=instruction, 
                 raw_content=content,
@@ -72,7 +72,7 @@ class Structurizer:
             print(f"data_id: {data_id}, do_construct_table... in doc {d}/{len(docs)} in docs ..")
             title = doc['title']
             content = doc['document']
-            raw_prompt = open("prompts/construction_table.txt", "r").read()
+            raw_prompt = open("prompts/construct_table.txt", "r").read()
             prompt = raw_prompt.format(
                 instruction=instruction, 
                 content=content
@@ -111,7 +111,7 @@ class Structurizer:
             print(f"data_id: {data_id}, do_construct_algorithm... in doc {d}/{len(docs)} in docs ..")
             title = doc['title']
             content = doc['document']
-            raw_prompt = open("prompts/construction_algorithm.txt", "r").read()
+            raw_prompt = open("prompts/construct_algorithm.txt", "r").read()
             prompt = raw_prompt.format(
                 requirement=instruction, 
                 raw_content=content
@@ -136,7 +136,7 @@ class Structurizer:
             print(f"data_id: {data_id}, do_construct_catalogue... in doc {d}/{len(docs)} in docs ..")
             title = doc['title']
             document = doc['document']
-            raw_prompt = open("prompts/construction_catalogue.txt", "r").read()
+            raw_prompt = open("prompts/construct_catalogue.txt", "r").read()
             
             len_document = len(document)
             contents = [document]

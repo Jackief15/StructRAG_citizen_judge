@@ -18,8 +18,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--llm_name", type=str, default="qwen")
     parser.add_argument("--dataset_name", type=str, default="loong")
-    parser.add_argument("--url", type=str, default="10.32.14.181:1225")
-    parser.add_argument("--router_url", type=str, default="10.32.14.181:1225")
+    parser.add_argument("--url", type=str)
+    parser.add_argument("--router_url", type=str)
     parser.add_argument("--worker_id", type=int, choices=[0, 1, 2, 3, 4, 5, 6, 7], default=0)
     parser.add_argument("--start_bias", type=int, default=0) # used to manually skip last time error data
     parser.add_argument("--output_path_suffix", type=str, default="")
