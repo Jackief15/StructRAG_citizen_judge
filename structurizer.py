@@ -1,5 +1,6 @@
 import json
 
+
 class Structurizer:
     def __init__(self, llm, chunk_kb_path, graph_kb_path, table_kb_path, algorithm_kb_path, catalogue_kb_path):
         self.llm = llm
@@ -17,18 +18,15 @@ class Structurizer:
             info_of_graph = self.do_construct_graph(instruction, docs, data_id)
             return instruction, info_of_graph
         elif chosen == "table":
-            composed_query = "\n".join(query)
-            instruction = f"Query is {composed_query}, please extract relevant complete tables from the document based on the attributes and keywords mentioned in the Query. Note: retain table titles and source information."
+            instruction = f"Query is {query}, please extract relevant complete tables from the document based on the attributes and keywords mentioned in the Query. Note: retain table titles and source information."
             info_of_table = self.do_construct_table(instruction, docs, data_id)
             return instruction, info_of_table
         elif chosen == "algorithm":
-            composed_query = "\n".join(query)
-            instruction = f"Query is {composed_query}, please extract relevant algorithms from the document based on the Query."
+            instruction = f"Query is {query}, please extract relevant algorithms from the document based on the Query."
             info_of_algorithm = self.do_construct_algorithm(instruction, docs, data_id)
             return instruction, info_of_algorithm
         elif chosen == "catalogue":
-            composed_query = "\n".join(query)
-            instruction = f"Query is {composed_query}, please extract relevant catalogues from the document based on the Query."
+            instruction = f"Query is {query}, please extract relevant catalogues from the document based on the Query."
             info_of_catalogue = self.do_construct_catalogue(instruction, docs, data_id)
             return instruction, info_of_catalogue
         elif chosen == "chunk":
@@ -43,24 +41,25 @@ class Structurizer:
         docs, titles = self.split_content_and_tile(docs)
 
         graphs = []
+        info_of_graph = ""
+        raw_prompt = open("prompts/construct_graph.txt", "r").read()
         for d, doc in enumerate(docs):
             print(f"data_id: {data_id}, do_construct_graph... in doc {d}/{len(docs)} in docs ..")
             title = doc['title']
             content = doc['document']
 
-            raw_prompt = open("prompts/construct_graph.txt", "r").read()
             prompt = raw_prompt.format(
                 requirement=instruction, 
                 raw_content=content,
                 titles="\n".join(titles)
             )
             output = self.llm.response(prompt)
+            info_of_graph += output.split("\n")[0][:128]
             graphs.append(f"{title}: {output}")
 
         output_path = f"{self.graph_kb_path}/data_{data_id}.json"
         json.dump(graphs, open(output_path, "w"), ensure_ascii=False, indent=4)
 
-        info_of_graph = output.split("\n")[0]
         return info_of_graph
 
     def do_construct_table(self, instruction, docs, data_id):
@@ -68,22 +67,23 @@ class Structurizer:
         docs, titles = self.split_content_and_tile(docs)
 
         tables = []
+        info_of_table = ""
+        raw_prompt = open("prompts/construct_table.txt", "r").read()
         for d, doc in enumerate(docs):
             print(f"data_id: {data_id}, do_construct_table... in doc {d}/{len(docs)} in docs ..")
             title = doc['title']
             content = doc['document']
-            raw_prompt = open("prompts/construct_table.txt", "r").read()
             prompt = raw_prompt.format(
                 instruction=instruction, 
                 content=content
             )
             output = self.llm.response(prompt)
+            info_of_table += output.split("\n")[0][:128]
             tables.append(f"{title}: {output}")
 
         output_path = f"{self.table_kb_path}/data_{data_id}.json"
         json.dump(tables, open(output_path, "w"), ensure_ascii=False, indent=4)
 
-        info_of_table = output.split("\n")[0]
         return info_of_table
 
     def do_construct_chunk(self, instruction, docs, data_id):
@@ -107,22 +107,23 @@ class Structurizer:
         docs, titles = self.split_content_and_tile(docs)
 
         algorithms = []
+        info_of_algorithm = ""
+        raw_prompt = open("prompts/construct_algorithm.txt", "r").read()
         for d, doc in enumerate(docs):
             print(f"data_id: {data_id}, do_construct_algorithm... in doc {d}/{len(docs)} in docs ..")
             title = doc['title']
             content = doc['document']
-            raw_prompt = open("prompts/construct_algorithm.txt", "r").read()
             prompt = raw_prompt.format(
                 requirement=instruction, 
                 raw_content=content
             )
             output = self.llm.response(prompt)
+            info_of_algorithm += output.split("\n")[0][:128]
             algorithms.append(f"{title}: {output}")
 
         output_path = f"{self.algorithm_kb_path}/data_{data_id}.json"
         json.dump(algorithms, open(output_path, "w"), ensure_ascii=False, indent=4) 
 
-        info_of_algorithm = output.split("\n")[0]
         return info_of_algorithm
         
     def do_construct_catalogue(self, instruction, docs, data_id):
@@ -132,11 +133,12 @@ class Structurizer:
         instruction = instruction.split("Query:\n")[1]
 
         catalogues = []
+        info_of_catalogue = ""
+        raw_prompt = open("prompts/construct_catalogue.txt", "r").read()
         for d, doc in enumerate(docs):
             print(f"data_id: {data_id}, do_construct_catalogue... in doc {d}/{len(docs)} in docs ..")
             title = doc['title']
             document = doc['document']
-            raw_prompt = open("prompts/construct_catalogue.txt", "r").read()
             
             len_document = len(document)
             contents = [document]
@@ -148,20 +150,23 @@ class Structurizer:
                     raw_content=content
                 )
                 output = self.llm.response(prompt)
+                info_of_catalogue += output.split("\n")[0][:128]
                 catalogues.append(f"\n\n{title}: {output}")
 
         output_path = f"{self.catalogue_kb_path}/data_{data_id}.json"
         json.dump(catalogues, open(output_path, "w"), ensure_ascii=False, indent=4)
 
-        info_of_catalogue = output.split("\n")[0]
         return info_of_catalogue
 
     def split_content_and_tile(self, docs_):
         docs = []
         titles = []
-        for d in docs_:
-            title = d.split('\n')[0].strip().strip('\n')
-            content = d.split('\n')[1]
+        
+        raw_doc_list = docs_.strip("<标题起始符>").split("<标题起始符>")
+
+        for raw_doc in raw_doc_list:
+            title = raw_doc.split('<标题终止符>')[0].strip()
+            content = raw_doc.split('<标题终止符>')[1].strip()
 
             docs.append({'title': title, 'document': content})
             titles.append(title)

@@ -10,8 +10,8 @@ class QwenAPI():
         self.url = url
 
         print("loading tokenizer")
-        if os.path.exists("/mnt/data/hf_models/gpt2"):
-            self.tokenizer = AutoTokenizer.from_pretrained("/mnt/data/hf_models/gpt2")
+        if os.path.exists("/mnt/data/lizhuoqun/hf_models/gpt2"):
+            self.tokenizer = AutoTokenizer.from_pretrained("/mnt/data/lizhuoqun/hf_models/gpt2")
         else:
             raise Exception("No model path found")
         print("loading tokenizer done")

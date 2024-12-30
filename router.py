@@ -5,7 +5,7 @@ class Router:
     def do_route(self, query, core_content, data_id):
         print(f"data_id: {data_id}, do_route...") 
         
-        raw_prompt = open("prompts/routing.txt", "r").read()
+        raw_prompt = open("prompts/route.txt", "r").read()
 
         prompt = raw_prompt.format(
             query=query,

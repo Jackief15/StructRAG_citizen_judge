@@ -18,8 +18,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument("--llm_name", type=str, default="qwen")
     parser.add_argument("--dataset_name", type=str, default="loong")
-    parser.add_argument("--url", type=str)
-    parser.add_argument("--router_url", type=str)
+    parser.add_argument("--url", type=str, default="10.32.15.63:1225")
+    parser.add_argument("--router_url", type=str, default=None)
     parser.add_argument("--worker_id", type=int, choices=[0, 1, 2, 3, 4, 5, 6, 7], default=0)
     parser.add_argument("--start_bias", type=int, default=0) # used to manually skip last time error data
     parser.add_argument("--output_path_suffix", type=str, default="")
@@ -29,8 +29,11 @@ if __name__ == '__main__':
         print(f"{k}: {v}")
     print('\nstart...')
 
-    llm = QwenAPI(url=f"http://{args.url}/v1/chat/completions")
-    router = QwenAPI(url=f"http://{args.router_url}/v1/chat/completions")
+    main_llm = QwenAPI(url=f"http://{args.url}/v1/chat/completions")
+    if args.router_url is None:
+        router_llm = QwenAPI(url=f"http://{args.url}/v1/chat/completions")
+    else:
+        router_llm = QwenAPI(url=f"http://{args.router_url}/v1/chat/completions")
 
     eval_data_path = "./Loong/data/loong_process.jsonl"
     eval_datas = [json.loads(l) for l in open(eval_data_path)]
@@ -59,9 +62,9 @@ if __name__ == '__main__':
     exiting_data = [json.loads(l) for l in open(f"{output_dir}/final_output_{args.worker_id}.jsonl")]
     exiting_data_ids = [d["id"] for d in exiting_data]    
 
-    router = Router(llm)
-    structurizer = Structurizer(llm, chunk_kb_path, graph_kb_path, table_kb_path, algorithm_kb_path, catalogue_kb_path)
-    utilizer = Utilizer(llm, chunk_kb_path, graph_kb_path, table_kb_path, algorithm_kb_path, catalogue_kb_path)
+    router = Router(router_llm)
+    structurizer = Structurizer(main_llm, chunk_kb_path, graph_kb_path, table_kb_path, algorithm_kb_path, catalogue_kb_path)
+    utilizer = Utilizer(main_llm, chunk_kb_path, graph_kb_path, table_kb_path, algorithm_kb_path, catalogue_kb_path)
 
     for i, data in enumerate(eval_datas): # data: {"instruction": "", "question": "", "docs": "", "prompt_template": "{},{},{}"}
         if data["id"] in exiting_data_ids:
@@ -83,12 +86,12 @@ if __name__ == '__main__':
             fw_intermediate.flush()
 
             # 2. structurizer
-            instruction, kb_info = structurizer.do_construct(query, chosen, data['docs'], data['id'])
+            instruction, kb_info = structurizer.construct(query, chosen, data['docs'], data['id'])
             fw_intermediate.write(json.dumps({"instruction": instruction, "kb_info": kb_info}, ensure_ascii=False) + "\n")
             fw_intermediate.flush()
 
             # 3. utilizer
-            subqueries = utilizer.do_analyze(query, kb_info, data['id'])
+            subqueries = utilizer.do_decompose(query, kb_info, data['id'])
             fw_intermediate.write(json.dumps({"subqueries": subqueries}, ensure_ascii=False) + "\n")
             fw_intermediate.flush()
             subknowledges = utilizer.do_extract(query, subqueries, chosen, data['id'])

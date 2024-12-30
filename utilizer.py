@@ -1,5 +1,6 @@
 import json
 
+
 class Utilizer():
     def __init__(self, llm, chunk_kb_path, graph_kb_path, table_kb_path, algorithm_kb_path, catalogue_kb_path):
         self.llm = llm
@@ -23,27 +24,27 @@ class Utilizer():
         return subqueries
 
     def do_extract(self, query, subqueries, chosen, data_id, extra_instruction=None):
-        print(f"data_id: {data_id}, retrieve...")
+        print(f"data_id: {data_id}, extraction...")
 
         if extra_instruction != None:
             subqueries = [subquery + extra_instruction for subquery in subqueries]
         
         if chosen == "chunk":
-            subknowledges = self.do_retrieve_chunk(query, subqueries, data_id)
+            subknowledges = self.do_extract_chunk(query, subqueries, data_id)
         elif chosen == "table":
-            subknowledges = self.do_retrieve_table(query, subqueries, data_id)
+            subknowledges = self.do_extract_table(query, subqueries, data_id)
         elif chosen == "graph":
-            subknowledges = self.do_retrieve_graph(query, subqueries, data_id)
+            subknowledges = self.do_extract_graph(query, subqueries, data_id)
         elif chosen == "algorithm":
-            subknowledges = self.do_retrieve_algorithm(query, subqueries, data_id)
+            subknowledges = self.do_extract_algorithm(query, subqueries, data_id)
         elif chosen == "catalogue":
-            subknowledges = self.do_retrieve_catalogue(query, subqueries, data_id)
+            subknowledges = self.do_extract_catalogue(query, subqueries, data_id)
         else:
             raise ValueError("chosen should be in ['chunk', 'table', 'graph', 'algorithm', 'catalogue']")
 
         return subknowledges
 
-    def do_retrieve_chunk(self, query, subqueries, data_id):
+    def do_extract_chunk(self, query, subqueries, data_id):
         chunks = json.load(open(f"{self.chunk_kb_path}/data_{data_id}.json"))
 
         composed_query = "\n".join(subqueries) 
@@ -59,8 +60,8 @@ class Utilizer():
 
         return subknowledges   
 
-    def do_retrieve_table(self, query, subqueries, data_id):
-        print(f"data_id: {data_id}, do_retrieve_table...")
+    def do_extract_table(self, query, subqueries, data_id):
+        print(f"data_id: {data_id}, do_extract_table...")
 
         tables = json.load(open(f"{self.table_kb_path}/data_{data_id}.json"))
         tables_content = ""
@@ -69,52 +70,52 @@ class Utilizer():
 
         subknowledges = []
         for s, subquery in enumerate(subqueries):
-            print(f"data_id: {data_id}, do_retrieve_table... in subquery {s}/{len(subqueries)} in subqueries ..")
+            print(f"data_id: {data_id}, do_extract_table... in subquery {s}/{len(subqueries)} in subqueries ..")
             prompt = f"Instruction:\nThe following Tables show multiple independent tables built from multiple documents.\nFilter these tables according to the query, retaining only the table information that helps answer the query.\nNote that you need to analyze the attributes and entities mentioned in the query and filter accordingly.\nThe information needed to answer the query must exist in one or several tables, and you need to check these tables one by one.\n\nTables:{tables_content}\n\nQuery:{subquery}\n\nOutput:"
             retrieval = self.llm.response(prompt)
             subknowledges.append(retrieval)
 
         return subknowledges
     
-    def do_retrieve_graph(self, query, subqueries, data_id):
-        print(f"data_id: {data_id}, do_retrieve_graph...")
+    def do_extract_graph(self, query, subqueries, data_id):
+        print(f"data_id: {data_id}, do_extract_graph...")
 
         graphs = json.load(open(f"{self.graph_kb_path}/data_{data_id}.json"))
         graphs_content = "\n\n".join(graphs)
 
         subknowledges = []
         for s, subquery in enumerate(subqueries):
-            print(f"data_id: {data_id}, do_retrieve_graph... in subquery {s}/{len(subqueries)} in subqueries ..")
+            print(f"data_id: {data_id}, do_extract_graph... in subquery {s}/{len(subqueries)} in subqueries ..")
             prompt = f"Instruction: According to the query, filter out the triples from all triples in the graph that can help answer the query.\nNote, carefully analyze the entities and relationships mentioned in the query and filter based on this information.\n\nGraphs:{graphs_content}\n\nQuery:{subquery}\n\nOutput:"
             retrieval = self.llm.response(prompt)
             subknowledges.append(retrieval)
 
         return subknowledges
 
-    def do_retrieve_algorithm(self, query, subqueries, data_id):
-        print(f"data_id: {data_id}, do_retrieve_algorithm...")
+    def do_extract_algorithm(self, query, subqueries, data_id):
+        print(f"data_id: {data_id}, do_extract_algorithm...")
 
         algorithms = json.load(open(f"{self.algorithm_kb_path}/data_{data_id}.json"))
         algorithms_content = "\n\n".join(algorithms)
 
         subknowledges = []
         for s, subquery in enumerate(subqueries):
-            print(f"data_id: {data_id}, do_retrieve_algorithm... in subquery {s}/{len(subqueries)} in subqueries ..")
+            print(f"data_id: {data_id}, do_extract_algorithm... in subquery {s}/{len(subqueries)} in subqueries ..")
             prompt = f"Instruction: According to the query, filter out information from algorithm descriptions that can help answer the query.\nNote, carefully analyze the entities and relationships mentioned in the query and filter based on this information.\n\nAlgorithms:{algorithms_content}\n\nQuery:{subquery}\n\nOutput:"
             retrieval = self.llm.response(prompt)
             subknowledges.append(retrieval)
 
         return subknowledges
 
-    def do_retrieve_catalogue(self, query, subqueries, data_id):
-        print(f"data_id: {data_id}, do_retrieve_catalogue...")
+    def do_extract_catalogue(self, query, subqueries, data_id):
+        print(f"data_id: {data_id}, do_extract_catalogue...")
 
         catalogues = json.load(open(f"{self.catalogue_kb_path}/data_{data_id}.json"))
         catalogues_content = "\n\n".join(catalogues)
 
         subknowledges = []
         for s, subquery in enumerate(subqueries):
-            print(f"data_id: {data_id}, do_retrieve_catalogue... in subquery {s}/{len(subqueries)} in subqueries ..")
+            print(f"data_id: {data_id}, do_extract_catalogue... in subquery {s}/{len(subqueries)} in subqueries ..")
             prompt = f"Instruction: According to the query, filter out information from the catalogue that can help answer the query.\nNote, carefully analyze the entities and relationships mentioned in the query and filter based on this information.\n\nCatalogues:{catalogues_content}\n\nQuery:{subquery}\n\nOutput:"
             retrieval = self.llm.response(prompt)
             subknowledges.append(retrieval)
