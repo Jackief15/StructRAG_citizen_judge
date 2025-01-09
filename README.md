@@ -30,3 +30,14 @@ python do_merge_each_batch.py # results will be in ./Loong/output/qwen
 ```
 cd Loong/src && bash run.sh
 ```
+
+## 4. Router Training (optional)
+Qwen2-72B-Instruct has already achieved good routing performance under the few-shot examples setting. If wish to further improve routing accuracy, we can train the 7B model using the DPO algorithm:
+```
+bash train_router/train.sh
+```
+
+After training, deploy the output model as an API using vllm, and obtain url_of_router. When running StructRAG, use the following command:
+```
+python main.py --url {url_of_api_server} --router_url {url_of_router}
+```
