@@ -3,3 +3,6 @@ env/
 __pycache__/
 outputs/
 
+Loong/data/*.jsonl
+Loong/output/**
+eval_results/**
