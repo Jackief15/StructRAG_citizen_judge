@@ -42,10 +42,10 @@ def main():
     parser = build_parser()
     args   = parser.parse_args()
 
-    # 1️⃣ 建立 LLM（Structurizer & Utilizer 共用）
+    # 建立 LLM（Structurizer & Utilizer 共用）
     llm = GeminiAPI(model_name=args.llm_name)
 
-    # 2️⃣ 讀取裁定書文字
+    # 讀取裁定書文字
     data_id = 0
     input_path = pathlib.Path(args.input_file)
     core_text  = input_path.read_text(encoding="utf-8")
@@ -56,7 +56,7 @@ def main():
         "document": core_text,
     }]
 
-    # 3️⃣ Structurizer：產生布林表 (Markdown)
+    # Structurizer：產生布林表 (Markdown)
     table_dir = pathlib.Path("table_kb")
     table_dir.mkdir(exist_ok=True)
 
@@ -67,7 +67,7 @@ def main():
         data_id=data_id,
     )
 
-    # 4️⃣ Utilizer：Gemini 推論 TRUE / FALSE
+    # Utilizer：Gemini 推論 TRUE / FALSE
     utilizer = Utilizer(llm, table_kb_path=str(table_dir))
     verdict, reason  = utilizer.infer_boolean(
         query="本案是否仍行國民法官審判？",
@@ -75,7 +75,7 @@ def main():
         core_text=core_text
     )
 
-    # === 建立路徑字串（放在取得 verdict 之後） =========
+    # 布林表
     table_path = table_dir / f"data_{data_id}.md"   # TABLE_DIR 與 structurizer 使用相同變數
     table_md   = table_path.read_text(encoding="utf-8")
 
@@ -91,4 +91,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    print('Executed')
