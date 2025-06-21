@@ -38,7 +38,6 @@ class Utilizer():
         ], temperature=0.0)["choices"][0]["message"]["content"]
 
         first_token = reply.strip().split()[0].upper()
-        self.response = reply  # 與 QwenAPI 介面對齊
         reason = reply.strip()[len(reply.strip().split()[0]):].lstrip()
         return first_token.startswith("T"), reason
     
