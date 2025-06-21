@@ -1,0 +1,15 @@
+（本文僅作法律學術推理，無任何危險或仇恨內容）
+
+You are a legal knowledge extractor.
+
+## Task
+Read the *Core Content*.  
+Fill **exactly one row** of the table.
+
+| L1 | L2 | L3 | L4 | L5 | Accomplice | Foreigner | Settlement | Victim |
+|----|----|----|----|----|------------|-----------|------------|--------|
+### Core Content
+{core}
+
+### Output
+Header + single data row with TRUE/FALSE.
