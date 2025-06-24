@@ -4,7 +4,7 @@ from typing import List, Dict
 class Structurizer:
     COLS = [
         "L1", "L2", "L3", "L4", "L5",
-        "Accomplice", "Foreigner", "Settlement", "Victim",
+        "涉及共犯？", "涉及外國人？", "和解？", "被害人考量？",
     ]
 
     def __init__(self, llm, table_kb_path: str = "table_kb") -> None:

@@ -25,14 +25,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     parser.add_argument("--input_file", type=str, required=True,
                         help="裁定書純文字檔 (UTF‑8) ‑ e.g. test_order.txt")
-
+    parser.add_argument("--util_prompt", type=str, default="prompts/util_boolean.txt")
+    
     # Gemini LLM 參數
     parser.add_argument("--llm_name", type=str, default="gemini-2.0-flash",
                         help="Gemini 模型，如 gemini‑1.5‑pro / 2.5‑pro / flash")
     # parser.add_argument("--api_key", type=str, default=None,
     #                     help="可選，若未給則讀 GOOGLE_API_KEY / GEMINI_API_KEY")
-
-    parser.add_argument("--util_prompt", type=str, default="prompts/util_boolean.txt")
     return parser
 
 
