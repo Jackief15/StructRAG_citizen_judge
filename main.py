@@ -31,6 +31,8 @@ def build_parser() -> argparse.ArgumentParser:
                         help="Gemini 模型，如 gemini‑1.5‑pro / 2.5‑pro / flash")
     # parser.add_argument("--api_key", type=str, default=None,
     #                     help="可選，若未給則讀 GOOGLE_API_KEY / GEMINI_API_KEY")
+
+    parser.add_argument("--util_prompt", type=str, default="prompts/util_boolean.txt")
     return parser
 
 
@@ -50,6 +52,7 @@ def main():
     input_path = pathlib.Path(args.input_file)
     core_text  = input_path.read_text(encoding="utf-8")
     print(f"Loaded {input_path.name} ({len(core_text)} chars)")
+    util_prompt_path = args.util_prompt
 
     docs = [{
         "title": input_path.stem,
@@ -68,7 +71,7 @@ def main():
     )
 
     # Utilizer：Gemini 推論 TRUE / FALSE
-    utilizer = Utilizer(llm, table_kb_path=str(table_dir))
+    utilizer = Utilizer(llm, table_kb_path=str(table_dir), prompt_path=util_prompt_path)
     verdict, reason  = utilizer.infer_boolean(
         query="本案是否仍行國民法官審判？",
         data_id=data_id,
