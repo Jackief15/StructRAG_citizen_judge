@@ -31,7 +31,7 @@ class Utilizer():
         table_md = md_file.read_text(encoding="utf-8")
 
         raw_prompt = self.prompt_path.read_text(encoding="utf-8")
-        prompt = raw_prompt.format(table=table_md.strip(), query=query, core=core_text, statute=self.LAW_TEXT)
+        prompt = raw_prompt.format(table=table_md.strip(), query=query, core=core_text)
 
         reply = self.llm([
             {"role": "user", "content": prompt}
