@@ -1,39 +1,65 @@
 import json, pathlib
-from typing import List, Dict
+from typing import List, Dict, Set
 
 class Structurizer:
-    COLS = [
+    """產生 <單一> Markdown Boolean Table。
+    允許動態欄位；可將現有欄名清單 (existing_factors) 傳入，
+    以提示 LLM 優先沿用，避免欄名暴增。
+    """
+
+    BASE_COLS = [
         "L1", "L2", "L3", "L4", "L5",
         "涉及共犯？", "涉及外國人？", "和解？", "被害人考量？",
     ]
 
-    def __init__(self, llm, table_kb_path: str = "table_kb") -> None:
+    def __init__(self, llm, table_kb_path: str or pathlib.Path = "table_kb") -> None:
         self.llm = llm
-        self.table_kb_path = table_kb_path
-        # os.makedirs(self.table_kb_path, exist_ok=True)
+        self.table_kb_path = pathlib.Path(table_kb_path)
+        self.table_kb_path.mkdir(exist_ok=True)
 
-    def do_construct_table(self, docs: List[Dict], data_id: int, instruction: str = "") -> str:
-        """Build **one** boolean markdown table from *docs* and save to md file.
-        *docs* is list of {"title": str, "document": str}. Only doc["document"] is used.
-        Returns the first line (header) as info string for downstream logging.
+    # ------------------------------------------------------------------
+    def do_construct_table(
+        self,
+        docs: List[Dict],
+        data_id: int,
+        instruction: str = "",
+        existing_factors: Set[str] or None = None,
+    ) -> str:
+        """Merge *docs* → prompt LLM → save `data_{id}.md`.
+        Returns the **header row** (first line) for logging.
         """
         print(f"data_id {data_id}: build boolean table … (n_docs={len(docs)})")
 
-        # ── 1. Merge all documents as Core Content ───────────────────
         core_content = "\n".join(d["document"] for d in docs)
+        existing_factors = existing_factors or set()
 
-        # ── 2. Compose LLM prompt ────────────────────────────────────
-        raw_prompt = open("prompts/construct_boolean_table.txt", "r").read()
-        prompt = raw_prompt.format(core=core_content.strip())
-        response = self.llm([{"role": "user", "content": prompt}], temperature=0.0)
+        # -------------------- Compose prompt --------------------------
+        raw_prompt = pathlib.Path("prompts/construct_boolean_table.txt").read_text()
+        extra_section = ""
+        if existing_factors:
+            extra_section = (
+                "\n### Existing factors (已出現欄名，請優先沿用)\n"
+                + ", ".join(sorted(existing_factors))
+                + "\n若無相符再新增新欄。"
+            )
+        prompt = raw_prompt.format(core=core_content.strip()) + extra_section
+
+        response = self.llm([
+            {"role": "user", "content": prompt}
+        ], temperature=0.0)
         table_md = response["choices"][0]["message"]["content"].strip()
 
-        # ── 3. Save markdown for utilizer ─────────────────────────────
-        out_path = pathlib.Path(self.table_kb_path) / f"data_{data_id}.md"
+        # print(f"[DEBUG] Structurizer LLM output ↓\n{response}\n")
+        # print(f"[DEBUG] Structurizer LLM output ↓\n{table_md}\n")
+        
+
+        # -------------------- Save --------------------------
+        out_path = self.table_kb_path / f"data_{data_id}.md"
         out_path.write_text(table_md, encoding="utf-8")
 
-        # ── 4. Return brief info (header row) ─────────────────────────
+        # -------------------- Return header -----------------
         return table_md.split("\n", 1)[0]
+
 
     # def __init__(self, llm, chunk_kb_path, graph_kb_path, table_kb_path, algorithm_kb_path, catalogue_kb_path):
     #     self.llm = llm
@@ -220,4 +246,4 @@ class Structurizer:
     #         docs.append({'title': title, 'document': content})
     #         titles.append(title)
 
-        return docs, titles
+        # return docs, titles

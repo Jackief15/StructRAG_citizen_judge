@@ -8,11 +8,14 @@ import random
 import pathlib
 random.seed(1024)
 import argparse
+import re
+import datetime as dt
 import pandas as pd
+from typing import Dict, Any, Set, Tuple
 
-from gemini_api import GeminiAPI
+# from gemini_api import GeminiAPI
 from openai_api import OpenAIAPI
-from claude_api  import ClaudeAPI
+# from claude_api  import ClaudeAPI
 # from utils.qwenapi import QwenAPI
 
 # from router import Router
@@ -41,40 +44,80 @@ def build_parser() -> argparse.ArgumentParser:
     #                     help="可選，若未給則讀 GOOGLE_API_KEY / GEMINI_API_KEY")
     return parser
 
-def run_one_case(llm, table_dir: pathlib.Path,
-                 title: str, core_text: str, idx: int,
-                 util_prompt_path: pathlib.Path):
-    """回傳 (verdict_bool, reason, table_md)"""
-    docs = [{"title": title, "document": core_text}]
-    struct = Structurizer(llm, table_kb_path=str(table_dir))
+def auto_cast(txt: str):
+    s = str(txt).strip()
+    # 空字串或只含 -、_、─ 等視為 missing
+    if not s or re.fullmatch(r"[-_─]+", s):
+        return None, "empty"
 
-    struct.do_construct_table(
-        instruction="請依格式填寫下列表格 (TRUE/FALSE)",
+    if s.upper() in {"TRUE", "FALSE"}:
+        return s.upper() == "TRUE", "bool"
+    try:
+        num = float(s) if "." in s else int(s)
+        return num, "number"
+    except ValueError:
+        pass
+    try:
+        return dt.date.fromisoformat(s), "date"
+    except ValueError:
+        pass
+    return s, "text"
+
+def is_data_line(ln: str) -> bool:
+    core = ln.strip().strip("|").replace("-", "").replace(":", "").strip()
+    return bool(core)           # 有真正字元才算資料
+
+def run_one_case(
+    llm,
+    table_dir: pathlib.Path,
+    title: str,
+    core_text: str,
+    idx: int,
+    util_prompt_path: pathlib.Path,
+    existing_factors: Set[str],
+):
+
+    # ---------- Structurizer ----------
+    docs = [{"title": title, "document": core_text}]
+    Structurizer(llm, table_kb_path=str(table_dir)).do_construct_table(
         docs=docs,
         data_id=idx,
+        existing_factors=existing_factors,   # ★ 給 LLM 參考
     )
 
-    # ---------- 讀回 Markdown 表並解析 ----------
-    table_path = table_dir / f"data_{idx}.md"
-    tbl_md     = table_path.read_text(encoding="utf-8")
+    # ---------- 讀回 & 取前兩行表格 ----------
+    tbl_md  = (table_dir / f"data_{idx}.md").read_text(encoding="utf-8")
+    lines   = [ln for ln in tbl_md.splitlines()
+               if ln.strip().startswith("|") and ln.count("|") >= 9 and is_data_line(ln)]
+    # one_csv = "\n".join(",".join(c.strip() for c in ln.strip("| ").split("|"))
+                        # for ln in lines)
+    if len(lines) < 2:
+        raise ValueError(f"data_id {idx}: markdown 表格缺資料列")
 
-    # print("=== RAW TABLE ===")
-    # print(tbl_md)
-
-    # ---- 過濾出真正 | 開頭的行 ----
-    table_lines = [ln for ln in tbl_md.splitlines() if ln.strip().startswith("|")]
-    table_clean = "\n".join(table_lines)
-
-    
-    # 先簡單把 | 換成 , 再用 csv 讀
-    df_tbl = pd.read_csv(
-        io.StringIO(table_clean.replace("|", ",")),
-        skipinitialspace=True
+    header, data = lines[0], lines[1]
+    table_csv = "\n".join(
+        ",".join(c.strip() for c in ln.strip("| ").split("|"))
+        for ln in (header, data)
     )
-    row_dict = df_tbl.iloc[0].to_dict()
-    
-    # 取首列轉 dict，並把 TRUE/FALSE -> Python bool
-    bool_cols = {k: str(v).strip().upper() == "TRUE" for k, v in df_tbl.iloc[0].items()}
+    df_tbl  = pd.read_csv(io.StringIO(table_csv), skipinitialspace=True)
+    df_tbl.rename(columns=lambda c: c.strip(), inplace=True)
+
+    BASE = Structurizer.BASE_COLS
+    bool_cols: Dict[str, bool]      = {}
+    extra_cols: Dict[str, Dict[str, Any]] = {}
+
+    for name, raw_val in df_tbl.iloc[0].items():
+        val, typ = auto_cast(str(raw_val))
+        if name in BASE:
+            bool_cols[name] = bool(val) if typ == "bool" else False
+        else:
+            if val is not None:
+                extra_cols[name] = {"value": val, "type": typ}
+            else:
+                extra_cols[name] = {"value": "NA", "type": "empty"}
+
+    # 把新出現欄寫回 set 供下一篇 Prompt
+    existing_factors.update(extra_cols.keys())
 
     # ---------- Utilizer ----------
     util = Utilizer(llm, table_kb_path=str(table_dir),
@@ -84,9 +127,11 @@ def run_one_case(llm, table_dir: pathlib.Path,
         data_id=idx,
         core_text=core_text,
     )
-    # table_md = (table_dir / f"data_{idx}.md").read_text()
 
-    return verdict, reason, bool_cols   # 不再回傳整段表
+    print(verdict, reason)
+
+    return verdict, reason, bool_cols, extra_cols
+
 
 def main():
     args = build_parser().parse_args()
@@ -118,12 +163,15 @@ def main():
     elif input_path.suffix.lower() in {".xlsx", ".xls"}:
         df = pd.read_excel(input_path, index_col=0)
         for idx, row in df.iterrows():
+            print(idx)
             title = str(row.get("裁定字號", f"case-{idx}"))
             core  = str(row.get("reasoning", ""))  # 裁定理由欄
             if not core.strip():
                 print(f"⚠️ row {idx}: reasoning 空白，跳過")
                 continue
-            v, r, bool_cols = run_one_case(llm, table_dir, title, core, idx, util_prompt)
+            
+            existing_factors: set[str] = set()
+            v, r, bool_cols, extra_cols = run_one_case(llm, table_dir, title, core, idx, util_prompt, existing_factors)
             
             row_dict = row.to_dict()
             row_dict.update(bool_cols)   # ← 把 L1~L5 + Accomplice…Victim 9 欄展開
@@ -131,6 +179,11 @@ def main():
                 "verdict": v,
                 "reason":  r,
             })
+            
+            for k, meta in extra_cols.items():        # 動態欄
+                row_dict[f"{k}_value"] = meta["value"]
+                row_dict[f"{k}_type"]  = meta["type"]
+            
             results.append(row_dict)
 
             print(f"[{idx}] {title} →", v)

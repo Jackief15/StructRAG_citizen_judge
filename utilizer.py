@@ -1,4 +1,4 @@
-# import json
+import re
 import pathlib, io, pandas as pd
 from typing import Dict
 
@@ -37,9 +37,27 @@ class Utilizer():
             {"role": "user", "content": prompt}
         ], temperature=0.0)["choices"][0]["message"]["content"]
 
-        first_token = reply.strip().split()[0].upper()
-        reason = reply.strip()[len(reply.strip().split()[0]):].lstrip()
-        return first_token.startswith("T"), reason
+        m = re.match(
+            r"""^[\s\*]*          # 可能的 * 與空白
+                (?P<tok>true|false)
+                [\s\*]*           # TRUE 後可能再來 ** / 空白
+                [:\-\.]*\s*       # 冒號 / 句點 / 破折號
+                (?P<rest>.*)$     # 其餘全部當 reason
+            """,
+            reply,
+            flags=re.IGNORECASE | re.VERBOSE | re.DOTALL,
+        )
+
+        if m:
+            verdict = m.group("tok").upper().startswith("T")
+            reason  = m.group("rest").strip()
+        else:
+            print('utilizer 輸出有問題')
+
+
+        print(verdict, reason)
+
+        return verdict, reason
     
     # def __init__(self, llm, chunk_kb_path, graph_kb_path, table_kb_path, algorithm_kb_path, catalogue_kb_path):
     #     self.llm = llm
