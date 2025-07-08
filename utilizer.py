@@ -50,13 +50,10 @@ class Utilizer():
 
         if m:
             verdict = m.group("tok").upper().startswith("T")
-            reason  = m.group("rest").strip()
+            reason  = m.group("rest").strip().lstrip('。.')
         else:
             print('utilizer 輸出有問題')
-
-
-        print(verdict, reason)
-
+            
         return verdict, reason
     
     # def __init__(self, llm, chunk_kb_path, graph_kb_path, table_kb_path, algorithm_kb_path, catalogue_kb_path):

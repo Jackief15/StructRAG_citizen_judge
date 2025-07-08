@@ -9,7 +9,7 @@ class Structurizer:
 
     BASE_COLS = [
         "L1", "L2", "L3", "L4", "L5",
-        "涉及共犯？", "涉及外國人？", "和解？", "被害人考量？",
+        "涉及共犯", "涉及外國人", "和解", "被害人考量",
     ]
 
     def __init__(self, llm, table_kb_path: str or pathlib.Path = "table_kb") -> None:

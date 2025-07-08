@@ -128,7 +128,7 @@ def run_one_case(
         core_text=core_text,
     )
 
-    print(verdict, reason)
+    # print(verdict, reason)
 
     return verdict, reason, bool_cols, extra_cols
 
@@ -157,8 +157,8 @@ def main():
                                  core_text=core,
                                  idx=0,
                                  util_prompt_path=util_prompt)
-        print(tbl)
-        print("Verdict:", v, "\nReason:", r)
+        # print(tbl)
+        # print("Verdict:", v, "\nReason:", r)
 
     elif input_path.suffix.lower() in {".xlsx", ".xls"}:
         df = pd.read_excel(input_path, index_col=0)
@@ -173,6 +173,7 @@ def main():
             existing_factors: set[str] = set()
             v, r, bool_cols, extra_cols = run_one_case(llm, table_dir, title, core, idx, util_prompt, existing_factors)
             
+            print(bool_cols)
             row_dict = row.to_dict()
             row_dict.update(bool_cols)   # ← 把 L1~L5 + Accomplice…Victim 9 欄展開
             row_dict.update({            # 再補 verdict / reason
