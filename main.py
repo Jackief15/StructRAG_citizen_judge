@@ -173,7 +173,6 @@ def main():
             existing_factors: set[str] = set()
             v, r, bool_cols, extra_cols = run_one_case(llm, table_dir, title, core, idx, util_prompt, existing_factors)
             
-            print(bool_cols)
             row_dict = row.to_dict()
             row_dict.update(bool_cols)   # ← 把 L1~L5 + Accomplice…Victim 9 欄展開
             row_dict.update({            # 再補 verdict / reason
