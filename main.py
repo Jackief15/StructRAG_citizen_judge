@@ -143,7 +143,7 @@ def main():
         llm = OpenAIAPI(model_name=args.model_name)
     else:
         llm = ClaudeAPI(model_name=args.model_name)
-    input_path   = pathlib.Path(args.input_file)
+    input_path   = "data" / pathlib.Path(args.input_file)
     util_prompt  = pathlib.Path(args.util_prompt)
     table_dir    = pathlib.Path("table_kb")
     table_dir.mkdir(exist_ok=True)
@@ -161,7 +161,7 @@ def main():
         # print("Verdict:", v, "\nReason:", r)
 
     elif input_path.suffix.lower() in {".xlsx", ".xls"}:
-        df = pd.read_excel(input_path, index_col=0)
+        df = pd.read_excel(input_path)
         for idx, row in df.iterrows():
             print(idx)
             title = str(row.get("裁定字號", f"case-{idx}"))
@@ -189,7 +189,9 @@ def main():
             print(f"[{idx}] {title} →", v)
 
         # 將結果寫回新檔
-        out_path = input_path.with_stem(input_path.stem + "_withVerdict")
+        out_dir  = input_path.parent / "output"          # data/output
+        out_dir.mkdir(exist_ok=True)                     # 若還沒建資料夾
+        out_path = out_dir / f"{input_path.stem}_withVerdict.xlsx"
         out_df = pd.DataFrame(results)
         
         # 去掉所有 Unnamed 欄、刪欄名尾空白
